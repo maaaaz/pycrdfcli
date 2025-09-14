@@ -8,7 +8,7 @@ authors = [{ email = "tdebize@mail.com" }]
 description = "A simple Python script to interact with CRDF (crdf.fr) APIs from CLI."
 readme = "README.md"
 requires-python = ">=3"
-keywords = ["crdf", "crdf.fr", "cli", "malware", "phishing", "threatcenter", "api"]
+keywords = ["crdf", "crdf.fr", "cli", "malware", "phishing", "threatcenter", "threat", "api"]
 license = "LGPL-3.0-or-later"
 classifiers = [
     'Topic :: Security',
