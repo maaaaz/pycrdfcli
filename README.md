@@ -12,23 +12,29 @@ Usage
 $ pip install pycrdfcli
 
 $ pycrdfcli
-usage: pycrdfcli.py [-h] [-k API_KEY] [-i INPUT_FILE] [-a {submit,check,info_key}]
+usage: pycrdfcli.py [-h] [-k API_KEY] [-i INPUT_FILE]
+                    [-a {submit,check,info_key}] [-p PROXY]
 
-version: 1.2
+version: 1.3
 
-options:
+optional arguments:
   -h, --help            show this help message and exit
-  -k, --api-key API_KEY
-                        API key (could either be provided in the "SECRET_CRDF_API_KEY" env var)
-  -i, --input-file INPUT_FILE
-                        Input file (either list of newline-separated FQDN, or a list newline-separated of CRDF refs)
-  -a, --action {submit,check,info_key}
+  -k API_KEY, --api-key API_KEY
+                        API key (could either be provided in the
+                        "SECRET_CRDF_API_KEY" env var)
+  -i INPUT_FILE, --input-file INPUT_FILE
+                        Input file (either list of newline-separated FQDN, or
+                        a list newline-separated of CRDF refs)
+  -a {submit,check,info_key}, --action {submit,check,info_key}
                         Action to do on CRDF (default 'submit')
+  -p PROXY, --proxy PROXY
+                        Proxy configuration (e.g "-p 'http://127.0.0.1:8080'"))
 ```
   
 
 Changelog
 ---------
+* version 1.3 - 2025-09-27: Few fixes and code refactoring
 * version 1.2 - 2025-09-14: Publication on pypi.org and few fixes
 
 

@@ -14,16 +14,71 @@ from w3lib.url import safe_url_string
 import validators
 
 # Globals
-VERSION = '1.2'
+VERSION = '1.3'
 
 CRDF_API_BASE_URL = 'https://threatcenter.crdf.fr/api/v1/'
 CRDF_API_KEY = 'SECRET_CRDF_API_KEY'
+
+ACTION_SUBMIT = 'submit'
+ACTION_CHECK = 'check'
+ACTION_INFO_KEY = 'info_key'
+ACTIONS = [ACTION_SUBMIT, ACTION_CHECK, ACTION_INFO_KEY]
 
 # Options definition
 parser = argparse.ArgumentParser(description="version: " + VERSION)
 parser.add_argument('-k', '--api-key', help='API key (could either be provided in the "%s" env var)' % CRDF_API_KEY, type = str)
 parser.add_argument('-i', '--input-file', help='Input file (either list of newline-separated FQDN, or a list newline-separated of CRDF refs)')
-parser.add_argument('-a', '--action', help = 'Action to do on CRDF (default \'submit\')', choices = ['submit', 'check', 'info_key'], type=str.lower, default = 'submit')
+parser.add_argument('-a', '--action', help = 'Action to do on CRDF (default \'submit\')', choices = ACTIONS, type=str.lower, default = ACTION_SUBMIT)
+parser.add_argument('-p', '--proxy', help = 'Proxy configuration (e.g "-p \'http://127.0.0.1:8080\'")', type=str.lower, default = None)
+
+
+def dump_success(req, action):
+    req_json = req.json()
+    if req_json:
+        if req_json.get('error') == False:
+            print("[+] CRDF '%s' request successful" % action)
+            pprint.pprint(req_json)
+    return
+
+def dump_err(req, msg):
+    print(msg)
+    print(req.status_code)
+    print(req.content.decode('utf-8'))
+    return
+
+def set_proxies(options):
+    res = None
+    if options.proxy:
+        res = { 'http': options.proxy,
+                'https': options.proxy }
+    return res
+
+
+def handle_res(req, action):
+    if req.ok:
+        dump_success(req, action)
+    else:
+        dump_err(req, "[!] CRDF '%s' request error" % action)
+    print('-------------------')
+    return
+
+
+def handle_req(action, http_method, url_endpoint, data_payload, options):
+    req = None
+    try:
+        if http_method == 'post':
+            req = requests.post(url_endpoint, json=data_payload, proxies=set_proxies(options))
+        
+        elif http_method == 'get':
+            req = requests.get(url_endpoint, json=data_payload, proxies=set_proxies(options))
+        
+        handle_res(req, action)
+    
+    except Exception as e:
+        print("[!] Exception: '%s'" % e)
+    
+    return req
+
 
 def chunks(lst, n):
     for i in range(0, len(lst), n):
@@ -33,32 +88,19 @@ def chunks(lst, n):
 def crdf_info_key(options):
     retval = os.EX_OK
     url_endpoint = CRDF_API_BASE_URL + 'info_key.json'
-    #headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36'}
     
     req_data = { "token": options.api_key,
                  "method": "info_key" }
                  
-    req = requests.post(url_endpoint, json=req_data)
-    if req.ok:
-        req_json = req.json()
-        if req_json.get('error') == False:
-            print("[+] CRDF check request successful")
-            pprint.pprint(req_json)
-    else:
-        print("[!] error while checking info about the CRDF API key")
-        pprint.pprint(req.status_code)
-        print(req.content)
-    print('-------------------')
+    req = handle_req(ACTION_INFO_KEY, 'post', url_endpoint, req_data, options)
     
     return retval
-
 
 
 def crdf_check(options):
     retval = os.EX_OK
     
     url_endpoint = CRDF_API_BASE_URL + 'submit_get_info.json'
-    headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36'}
 
     refs = []
     
@@ -74,19 +116,9 @@ def crdf_check(options):
                 req_data = { "token": options.api_key,
                              "method": "submit_get_info",
                              "ref": ref}
-                req = requests.post(url_endpoint, headers=headers, json=req_data)
+                
                 print("[+] CRDF ref '%s'" % ref)
-                
-                if req.ok:
-                    req_json = req.json()
-                    if req_json.get('error') == False:
-                        print("[+] CRDF check request successful")
-                        pprint.pprint(req_json)
-                else:
-                    print("[!] error while checking CRDF ref")
-                    pprint.pprint(req.status_code)
-                
-                print('-------------------')
+                req = handle_req(ACTION_CHECK, 'post', url_endpoint, req_data, options)
                 
         else:
             retval = os.EX_NOINPUT
@@ -100,7 +132,6 @@ def crdf_submit(options):
     retval = os.EX_OK
     
     url_endpoint = CRDF_API_BASE_URL + 'submit_url.json'
-    headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/107.0.0.0 Safari/537.36'}
     
     malicious_url = []
     
@@ -109,17 +140,22 @@ def crdf_submit(options):
             for line in fd_input:
                 line = line.strip()
                 if line.startswith(('http://', 'https://')):
-                    entry = safe_url_string(line)
-                    if validators.url(entry):
-                        malicious_url.append(entry)
+                    if validators.url(line):
+                        entry = safe_url_string(line)
+                        if validators.url(entry):
+                            malicious_url.append(entry)
                 else:
-                    entry_http = safe_url_string('http://'+line)
-                    if validators.url(entry_http):
-                        malicious_url.append(entry_http)
+                    entry_http_raw = 'http://' + line
+                    if validators.url(entry_http_raw):
+                        entry_http = safe_url_string(entry_http_raw)
+                        if validators.url(entry_http):
+                            malicious_url.append(entry_http)
                     
-                    entry_https = safe_url_string('https://'+line)
-                    if validators.url(entry_https):
-                        malicious_url.append(entry_https)
+                    entry_https_raw = 'https://' + line
+                    if validators.url(entry_https_raw):
+                        entry_https = safe_url_string(entry_https_raw)
+                        if validators.url(entry_https):
+                            malicious_url.append(entry_https)
         
         if malicious_url:
             #pprint.pprint(malicious_url)
@@ -129,20 +165,8 @@ def crdf_submit(options):
                 req_data = { "token": options.api_key,
                              "method": "submit_url",
                              "urls": sublist }
-                req = requests.post(url_endpoint, headers=headers, json=req_data)
                 
-                if req.ok:
-                    req_json = req.json()
-                    if req_json.get('error') == False:
-                        print("[+] CRDF submit request successful")
-                        pprint.pprint(req_json)
-                
-                else:
-                    print("[!] error while submitting CRDF URLs")
-                    pprint.pprint(req.status_code)
-                    print(req.content)
-                
-                print('-------------------')
+                req = handle_req(ACTION_SUBMIT, 'post', url_endpoint, req_data, options)
                 
                 # 2 submissions per minute
                 time.sleep(31)
@@ -168,13 +192,13 @@ def main():
     if (options.input_file == None) and (options.action != 'info_key'):
          parser.error('Please specify a valid input file or a valid URL')
     
-    if options.action == 'submit':
+    if options.action == ACTION_SUBMIT:
         sys.exit(crdf_submit(options))
     
-    elif options.action == 'check':
+    elif options.action == ACTION_CHECK:
         sys.exit(crdf_check(options))
         
-    elif options.action == 'info_key':
+    elif options.action == ACTION_INFO_KEY:
         sys.exit(crdf_info_key(options))
 
 if __name__ == "__main__" :
