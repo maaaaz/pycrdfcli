@@ -14,7 +14,7 @@ from w3lib.url import safe_url_string
 import validators
 
 # Globals
-VERSION = '1.3'
+VERSION = '1.4'
 
 CRDF_API_BASE_URL = 'https://threatcenter.crdf.fr/api/v1/'
 CRDF_API_KEY = 'SECRET_CRDF_API_KEY'
@@ -36,7 +36,7 @@ def dump_success(req, action):
     req_json = req.json()
     if req_json:
         if req_json.get('error') == False:
-            print("[+] CRDF '%s' request successful" % action)
+            print('[+] CRDF "%s" request successful' % action)
             pprint.pprint(req_json)
     return
 
@@ -58,7 +58,7 @@ def handle_res(req, action):
     if req.ok:
         dump_success(req, action)
     else:
-        dump_err(req, "[!] CRDF '%s' request error" % action)
+        dump_err(req, '[!] CRDF "%s" request error' % action)
     print('-------------------')
     return
 
@@ -75,7 +75,7 @@ def handle_req(action, http_method, url_endpoint, data_payload, options):
         handle_res(req, action)
     
     except Exception as e:
-        print("[!] Exception: '%s'" % e)
+        print('[!] Exception: "%s"' % e)
     
     return req
 
