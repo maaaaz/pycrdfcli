@@ -14,7 +14,7 @@ from w3lib.url import safe_url_string
 import validators
 
 # Globals
-VERSION = '1.5'
+VERSION = '1.6'
 
 CRDF_API_BASE_URL = 'https://threatcenter.crdf.fr/api/v1/'
 CRDF_API_KEY = 'SECRET_CRDF_API_KEY'
