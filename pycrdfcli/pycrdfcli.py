@@ -14,10 +14,11 @@ from w3lib.url import safe_url_string
 import validators
 
 # Globals
-VERSION = '1.6'
+VERSION = '1.7'
 
 CRDF_API_BASE_URL = 'https://threatcenter.crdf.fr/api/v1/'
 CRDF_API_KEY = 'SECRET_CRDF_API_KEY'
+CRDF_API_MAX_URL_PER_CALL = 250
 
 ACTION_SUBMIT = 'submit'
 ACTION_CHECK = 'check'
@@ -162,8 +163,8 @@ def crdf_submit(options):
         if malicious_url:
             #pprint.pprint(malicious_url)
             
-            # slices of max 1000 url
-            for sublist in chunks(malicious_url, 1000):
+            # slices of max number of url
+            for sublist in chunks(malicious_url, CRDF_API_MAX_URL_PER_CALL):
                 req_data = { "token": options.api_key,
                              "method": "submit_url",
                              "urls": sublist }
